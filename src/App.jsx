@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ImageUploader from './components/ImageUploader';
 import PixelCanvas from './components/PixelCanvas';
 import ControlPanel from './components/ControlPanel';
@@ -16,6 +16,7 @@ function App() {
   const [gridColor, setGridColor] = useState('#000000');
   const [pixelSpacing, setPixelSpacing] = useState(0);
   const [posterize, setPosterize] = useState(256);
+  const canvasRef = useRef(null);
 
   const handleImageUpload = (uploadedImage) => {
     setImage(uploadedImage);
@@ -25,7 +26,7 @@ function App() {
     setImage(null);
   };
 
-  const handleExport = (canvasRef) => {
+  const handleExport = () => {
     if (!canvasRef.current) return;
 
     canvasRef.current.toBlob((blob) => {
@@ -46,6 +47,7 @@ function App() {
             <ImageUploader onImageUpload={handleImageUpload} />
           ) : (
             <PixelCanvas 
+              ref={canvasRef}
               image={image} 
               pixelSize={pixelSize} 
               rotation={rotation}
