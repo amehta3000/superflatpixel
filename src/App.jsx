@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react';
 import ImageUploader from './components/ImageUploader';
 import PixelCanvas from './components/PixelCanvas';
+import WebcamCanvas from './components/WebcamCanvas';
 import ControlPanel from './components/ControlPanel';
 import './App.css';
 
 function App() {
   const [image, setImage] = useState(null);
+  const [webcamMode, setWebcamMode] = useState(false);
   const [pixelSize, setPixelSize] = useState(20);
   const [rotation, setRotation] = useState(0);
   const [pixelShape, setPixelShape] = useState('square');
@@ -20,15 +22,15 @@ function App() {
 
   const handleImageUpload = (uploadedImage) => {
     setImage(uploadedImage);
+    setWebcamMode(false);
   };
 
-  const handleImageRemove = () => {
-    setImage(null);
-  };
+  const handleImageRemove = () => setImage(null);
+  const handleWebcamStart = () => setWebcamMode(true);
+  const handleWebcamStop = () => setWebcamMode(false);
 
   const handleExport = () => {
     if (!canvasRef.current) return;
-
     canvasRef.current.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -39,41 +41,28 @@ function App() {
     }, 'image/jpeg', 0.95);
   };
 
+  const renderProps = {
+    pixelSize, rotation, pixelShape, backgroundColor,
+    blur, saturation, gridLines, gridColor, pixelSpacing, posterize,
+  };
+
+  const isActive = webcamMode || !!image;
+
   return (
     <div className="app">
       <div className="app-content">
         <div className="canvas-area">
-          {!image ? (
-            <ImageUploader onImageUpload={handleImageUpload} />
+          {webcamMode ? (
+            <WebcamCanvas ref={canvasRef} {...renderProps} />
+          ) : image ? (
+            <PixelCanvas ref={canvasRef} image={image} {...renderProps} />
           ) : (
-            <PixelCanvas 
-              ref={canvasRef}
-              image={image} 
-              pixelSize={pixelSize} 
-              rotation={rotation}
-              pixelShape={pixelShape}
-              backgroundColor={backgroundColor}
-              blur={blur}
-              saturation={saturation}
-              gridLines={gridLines}
-              gridColor={gridColor}
-              pixelSpacing={pixelSpacing}
-              posterize={posterize}
-            />
+            <ImageUploader onImageUpload={handleImageUpload} onWebcamStart={handleWebcamStart} />
           )}
         </div>
-        
+
         <ControlPanel
-          pixelSize={pixelSize}
-          rotation={rotation}
-          pixelShape={pixelShape}
-          backgroundColor={backgroundColor}
-          blur={blur}
-          saturation={saturation}
-          gridLines={gridLines}
-          gridColor={gridColor}
-          pixelSpacing={pixelSpacing}
-          posterize={posterize}
+          {...renderProps}
           onPixelSizeChange={setPixelSize}
           onRotationChange={setRotation}
           onPixelShapeChange={setPixelShape}
@@ -85,9 +74,11 @@ function App() {
           onPixelSpacingChange={setPixelSpacing}
           onPosterizeChange={setPosterize}
           onRemoveImage={handleImageRemove}
+          onWebcamStop={handleWebcamStop}
           onExport={handleExport}
           image={image}
-          hasImage={!!image}
+          hasImage={isActive}
+          webcamMode={webcamMode}
         />
       </div>
     </div>

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import './ImageUploader.css';
 
-function ImageUploader({ onImageUpload }) {
+function ImageUploader({ onImageUpload, onWebcamStart }) {
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -10,9 +10,7 @@ function ImageUploader({ onImageUpload }) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
-        img.onload = () => {
-          onImageUpload(img);
-        };
+        img.onload = () => onImageUpload(img);
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
@@ -32,27 +30,27 @@ function ImageUploader({ onImageUpload }) {
   const handleDrop = (e) => {
     e.preventDefault();
     e.currentTarget.classList.remove('drag-over');
-    
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
-        img.onload = () => {
-          onImageUpload(img);
-        };
+        img.onload = () => onImageUpload(img);
         img.src = event.target.result;
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleClick = () => {
-    fileInputRef.current.click();
+  const handleClick = () => fileInputRef.current.click();
+
+  const handleWebcamClick = (e) => {
+    e.stopPropagation();
+    onWebcamStart();
   };
 
   return (
-    <div 
+    <div
       className="image-uploader"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -71,6 +69,10 @@ function ImageUploader({ onImageUpload }) {
         <h2>Upload an Image</h2>
         <p>Click to browse or drag and drop an image here</p>
         <p className="supported-formats">Supports: JPG, PNG, GIF, WebP</p>
+        <div className="upload-divider">or</div>
+        <button className="webcam-btn" onClick={handleWebcamClick}>
+          📷 Use Webcam
+        </button>
       </div>
     </div>
   );

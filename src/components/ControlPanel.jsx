@@ -1,8 +1,8 @@
 import './ControlPanel.css';
 
-function ControlPanel({ 
-  pixelSize, 
-  rotation, 
+function ControlPanel({
+  pixelSize,
+  rotation,
   pixelShape,
   backgroundColor,
   blur,
@@ -11,8 +11,8 @@ function ControlPanel({
   gridColor,
   pixelSpacing,
   posterize,
-  onPixelSizeChange, 
-  onRotationChange, 
+  onPixelSizeChange,
+  onRotationChange,
   onPixelShapeChange,
   onBackgroundColorChange,
   onBlurChange,
@@ -21,10 +21,12 @@ function ControlPanel({
   onGridColorChange,
   onPixelSpacingChange,
   onPosterizeChange,
-  onRemoveImage, 
+  onRemoveImage,
+  onWebcamStop,
   onExport,
   image,
-  hasImage
+  hasImage,
+  webcamMode,
 }) {
   return (
     <div className="control-panel">
@@ -188,9 +190,15 @@ function ControlPanel({
         <button onClick={onExport} className="btn btn-primary" disabled={!hasImage}>
           💾 Export as JPG
         </button>
-        <button onClick={onRemoveImage} className="btn btn-secondary" disabled={!hasImage}>
-          🗑️ Remove Image
-        </button>
+        {webcamMode ? (
+          <button onClick={onWebcamStop} className="btn btn-secondary">
+            ⏹ Stop Webcam
+          </button>
+        ) : (
+          <button onClick={onRemoveImage} className="btn btn-secondary" disabled={!hasImage}>
+            🗑️ Remove Image
+          </button>
+        )}
       </div>
     </div>
   );
