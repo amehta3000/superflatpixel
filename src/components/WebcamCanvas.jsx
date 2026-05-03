@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import './PixelCanvas.css';
+import './WebcamCanvas.css';
 
 const WebcamCanvas = forwardRef(({
   pixelSize, rotation, pixelShape, backgroundColor, blur, saturation,
@@ -7,19 +8,27 @@ const WebcamCanvas = forwardRef(({
 }, ref) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const streamRef = useRef(null);
-  const rafRef = useRef(null);
   const propsRef = useRef({});
+  const [facingMode, setFacingMode] = useState('user');
   const [error, setError] = useState(null);
 
   useImperativeHandle(ref, () => canvasRef.current);
-
   propsRef.current = { pixelSize, rotation, pixelShape, backgroundColor, blur, saturation, gridLines, gridColor, pixelSpacing, posterize };
 
   useEffect(() => {
+    setError(null);
+    let animId;
+    let localStream = null;
+    let stopped = false;
+    let lastFrameTime = 0;
+    let lastOffW = 0;
+    let lastOffH = 0;
+    const FRAME_INTERVAL = 1000 / 20; // 20fps cap
+
     const video = document.createElement('video');
     video.muted = true;
     video.playsInline = true;
+    video.setAttribute('playsinline', '');
 
     const offscreen = document.createElement('canvas');
 
@@ -38,8 +47,10 @@ const WebcamCanvas = forwardRef(({
       };
     };
 
-    const render = () => {
-      rafRef.current = requestAnimationFrame(render);
+    const render = (timestamp) => {
+      animId = requestAnimationFrame(render);
+      if (timestamp - lastFrameTime < FRAME_INTERVAL) return;
+      lastFrameTime = timestamp;
 
       const canvas = canvasRef.current;
       const container = containerRef.current;
@@ -54,8 +65,9 @@ const WebcamCanvas = forwardRef(({
       const vh = video.videoHeight;
       if (!vw || !vh) return;
 
+      // Use container dimensions — works correctly on both desktop and mobile
       const maxWidth = container.clientWidth - 40;
-      const maxHeight = window.innerHeight - 300;
+      const maxHeight = container.clientHeight - 40;
 
       let width = vw;
       let height = vh;
@@ -71,24 +83,36 @@ const WebcamCanvas = forwardRef(({
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, width, height);
 
+      const mirror = facingMode === 'user';
+
       if (pixelSize === 0) {
         ctx.save();
-        ctx.scale(-1, 1);
-        ctx.drawImage(video, -width, 0, width, height);
+        if (mirror) { ctx.scale(-1, 1); ctx.drawImage(video, -width, 0, width, height); }
+        else ctx.drawImage(video, 0, 0, width, height);
         ctx.restore();
         return;
       }
 
       const scaledW = Math.ceil(width / pixelSize);
       const scaledH = Math.ceil(height / pixelSize);
-      offscreen.width = scaledW;
-      offscreen.height = scaledH;
+
+      // Only reallocate offscreen canvas when grid size actually changes
+      if (scaledW !== lastOffW || scaledH !== lastOffH) {
+        offscreen.width = scaledW;
+        offscreen.height = scaledH;
+        lastOffW = scaledW;
+        lastOffH = scaledH;
+      }
 
       const offCtx = offscreen.getContext('2d');
       if (blur > 0) offCtx.filter = `blur(${blur}px)`;
       offCtx.save();
-      offCtx.scale(-1, 1);
-      offCtx.drawImage(video, -scaledW, 0, scaledW, scaledH);
+      if (mirror) {
+        offCtx.scale(-1, 1);
+        offCtx.drawImage(video, -scaledW, 0, scaledW, scaledH);
+      } else {
+        offCtx.drawImage(video, 0, 0, scaledW, scaledH);
+      }
       offCtx.restore();
       offCtx.filter = 'none';
 
@@ -225,24 +249,34 @@ const WebcamCanvas = forwardRef(({
       }
     };
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then(stream => {
-        streamRef.current = stream;
-        video.srcObject = stream;
-        return video.play();
-      })
-      .then(() => {
-        rafRef.current = requestAnimationFrame(render);
-      })
-      .catch(() => {
-        setError('Camera access denied. Please allow camera permissions and try again.');
-      });
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode,
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      }
+    }).then(stream => {
+      if (stopped) { stream.getTracks().forEach(t => t.stop()); return Promise.reject('stopped'); }
+      localStream = stream;
+      video.srcObject = stream;
+      return video.play();
+    }).then(() => {
+      if (!stopped) animId = requestAnimationFrame(render);
+    }).catch(err => {
+      if (err === 'stopped') return;
+      const isNotFound = err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError';
+      setError(isNotFound
+        ? 'No camera found on this device.'
+        : 'Camera access denied. Please allow camera permissions and try again.'
+      );
+    });
 
     return () => {
-      cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      stopped = true;
+      cancelAnimationFrame(animId);
+      localStream?.getTracks().forEach(t => t.stop());
     };
-  }, []);
+  }, [facingMode]);
 
   if (error) {
     return (
@@ -254,8 +288,15 @@ const WebcamCanvas = forwardRef(({
   }
 
   return (
-    <div ref={containerRef} className="pixel-canvas-container">
+    <div ref={containerRef} className="pixel-canvas-container webcam-container">
       <canvas ref={canvasRef} className="pixel-canvas" />
+      <button
+        className="webcam-flip-btn"
+        onClick={() => setFacingMode(f => f === 'user' ? 'environment' : 'user')}
+        title="Flip camera"
+      >
+        🔄
+      </button>
     </div>
   );
 });

@@ -1,0 +1,33 @@
+.webcam-container {
+  position: relative;
+}
+
+.webcam-flip-btn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* Large tap target for mobile */
+  touch-action: manipulation;
+}
+
+.webcam-flip-btn:hover {
+  background: rgba(102, 126, 234, 0.6);
+  transform: scale(1.1);
+}
+
+.webcam-flip-btn:active {
+  transform: scale(0.95);
+}
